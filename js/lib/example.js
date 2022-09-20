@@ -69,6 +69,7 @@ var HelloView = widgets.DOMWidgetView.extend({
             //
             var summary = summaries[_id];
             d3.select('#detailsProgressBar')
+                .style('height', '100%')
                 .style('width', summary['progress'] + '%')
                 .text(summary['progress'] + '%');
         }
