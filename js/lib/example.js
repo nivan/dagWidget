@@ -56,13 +56,13 @@ var HelloView = widgets.DOMWidgetView.extend({
         var supported = Boolean(d3.select('#toc-wrapper').node());
         this.model.set('tocAvailable', supported);
         this.el.textContent = "ToC Supported: " + supported;
-        console.log('WOW 06');
+        console.log('WOW 09');
         this.model.on('change:dag', this.dag_changed, this);
         this.model.on('change:attentionRequests', this.attentionRequests, this);
         this.model.on('change:summaries', this.summariesChanged, this);
     },
     fillDetails: function (_id) {
-        console.log('fill details ', _id);
+        //console.log('fill details ', _id);
         d3.select('#detailsNameLabel').text(_id);
         var summaries = JSON.parse(this.model.get('summaries'));
         if (_id in summaries) {
@@ -81,12 +81,21 @@ var HelloView = widgets.DOMWidgetView.extend({
         var attentionRequests = JSON.parse(this.model.get('attentionRequests'));
         var mapTypeID = { "RESCALE_NEEDED": "attAxesLabel", "PROGRESS_NOTIFICATION": "attProgressLabel", "STABILITY_REACHED": "attStabilityLabel", "SAFEGUARD_SATISFIED": "attSafeguardLabel" };
 
+        //if there is at least one attention request for _id
         if (_id in attentionRequests) {
-            var attRequest = attentionRequests[_id];
-            var labelID = mapTypeID[attRequest.type];
-            d3.select("#" + labelID)
-                .text(attRequest.description);
+            var attRequests = attentionRequests[_id];
+            for (var key in mapTypeID) {
+                var description = "";
+                if ((key in attRequests) && ('description' in attRequests[key]))
+                    description = attRequests[key]['description'];
+                var labelID = mapTypeID[key];
+                d3.select("#" + labelID)
+                    .text(description);
+            }
         }
+        //if _id is not in attentionRequest and selected 
+        //this means that there is no attention request left
+        //and so we need to update the interface
         else if (this.selectedWidget == _id) {
             for (var key in mapTypeID) {
                 var labelID = mapTypeID[key];
@@ -199,10 +208,28 @@ var HelloView = widgets.DOMWidgetView.extend({
         var colorScale =
             d3.scaleOrdinal().domain(["RESCALE_NEEDED", "PROGRESS_NOTIFICATION", "STABILITY_REACHED", "SAFEGUARD_SATISFIED"]).range(['#fbb4ae', '#b3cde3', '#ccebc5', '#decbe4']);
 
-        console.log("Attention Request", attentionRequests);
+        //console.log("Attention Request", attentionRequests);
         var that = this;
+        //TODO: CHANGE STROKE FOR SHOWING THAT THERE IS MORE THAN
+        //ONE ATTENTION REQUEST
         d3.select('#nodeGroup')
             .selectAll('circle')
+            .attr('stroke-dasharray', function () {
+                var _id = d3.select(this).attr("id").slice(2);
+                if (_id in attentionRequests) {
+                    var attRequests = attentionRequests[_id];
+                    var numRequests = Object.keys(attRequests).length;
+                    if (numRequests > 1) {
+                        return "4";
+                    }
+                    else {
+                        return null;
+                    }
+                }
+                else {
+                    return null;
+                }
+            })
             .attr('fill', function () {
                 var _id = d3.select(this).attr("id").slice(2);
 
@@ -211,7 +238,18 @@ var HelloView = widgets.DOMWidgetView.extend({
                 }
 
                 if (_id in attentionRequests) {
-                    var attRequest = attentionRequests[_id];
+                    var attRequests = attentionRequests[_id];
+                    //
+                    var attRequest = undefined;
+                    var requestTypes = colorScale.domain();
+                    for (var index in requestTypes) {
+                        var key = requestTypes[index];
+                        if (key in attRequests) {
+                            attRequest = attRequests[key];
+                            break;
+                        }
+                    }
+                    //
                     var color = colorScale(attRequest.type);
                     return color;
                 }

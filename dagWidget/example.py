@@ -95,11 +95,20 @@ class HelloWorld(widgets.DOMWidget):
         self.summaries = json.dumps(self._summaries)          
 
     def requestAttention(self, internalID, entityType,eventType,description=""):        
-        self._attRqs[internalID] = {'entityType':entityType,'widgetID':internalID,'type':eventType,'description':description}
+        if internalID not in self._attRqs:
+            self._attRqs[internalID] = {}
+        #
+        self._attRqs[internalID][eventType] = {'entityType':entityType,'widgetID':internalID,'type':eventType,'description':description}        
         self.attentionRequests = json.dumps(self._attRqs)
  
-    def removeRequestAttention(self, internalID):
-        self._attRqs.pop(internalID, None)
+    def removeRequestAttention(self, internalID, eventType):
+        #
+        if (internalID in self._attRqs) and (eventType in self._attRqs[internalID]):
+            self._attRqs[internalID].pop(eventType, None)    
+        #
+        if (internalID in self._attRqs) and (len(self._attRqs[internalID]) == 0):
+            self._attRqs.pop(internalID, None)
+        #
         self.attentionRequests = json.dumps(self._attRqs)
 
     def updateDag(self):
