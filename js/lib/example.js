@@ -124,6 +124,14 @@ var HelloView = widgets.DOMWidgetView.extend({
             this.fillDetails(this.selectedWidget);
         }
     },
+    clearAttentionRequests: function (_dag) {
+        var presentIDs = _dag.map(d => d.id);
+        for (var key in this._attRqs) {
+            if (presentIDs.indexOf(key) == -1) {
+                delete this._attRqs[key];
+            }
+        }
+    },
     dag_changed: function () {
         //only work if supported
         if (!this.tocSupported)
@@ -131,6 +139,11 @@ var HelloView = widgets.DOMWidgetView.extend({
         //
         var info = JSON.parse(this.model.get('dag'));
         var _dag = info.dag;
+
+        //if nodes were removed clean attention requests
+        //to only keep the requests for widgets registered
+        //TODO: this should be in another function
+        this.clearAttentionRequests(_dag);
 
         //clear dag view        
         const edgeGroup = d3.select('#dagCanvas').select('#edgeGroup').node()
@@ -221,6 +234,9 @@ var HelloView = widgets.DOMWidgetView.extend({
             .attr("text-anchor", "middle")
             .attr("alignment-baseline", "middle")
             .attr("fill", "black");
+
+        //
+        this.refreshAttentionVisuals();
     },
     removeAttRqs: function (internalID, eventType) {
         //only work if supported        
