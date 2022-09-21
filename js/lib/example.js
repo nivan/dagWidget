@@ -43,10 +43,10 @@ var HelloView = widgets.DOMWidgetView.extend({
         // Observe changes in the value traitlet in Python, and define
         // a custom callback.
         this.el.textContent = "ToC Supported: " + this.tocSupported;
-        console.log('WOW 16');
+        //console.log('WOW 18');
     },
     initialize: function () {
-        console.log("INITIALIZE");
+        //console.log("INITIALIZE");
         //
         this.tocSupported = Boolean(d3.select('#toc-wrapper').node());
 
@@ -56,7 +56,7 @@ var HelloView = widgets.DOMWidgetView.extend({
         }
 
         //
-        this._attRequests = {};
+        this._attRqs = {};
         this.selectedWidget = undefined;
 
         //
@@ -89,7 +89,7 @@ var HelloView = widgets.DOMWidgetView.extend({
         }
         //
         //
-        var attentionRequests = JSON.parse(this.model.get('attentionRequests'));
+        var attentionRequests = this._attRqs;
         var mapTypeID = { "RESCALE_NEEDED": "attAxesLabel", "PROGRESS_NOTIFICATION": "attProgressLabel", "STABILITY_REACHED": "attStabilityLabel", "SAFEGUARD_SATISFIED": "attSafeguardLabel" };
 
         //if there is at least one attention request for _id
@@ -222,68 +222,39 @@ var HelloView = widgets.DOMWidgetView.extend({
             .attr("alignment-baseline", "middle")
             .attr("fill", "black");
     },
-    userRemoveAttRqs: function (_id, type) {
-        //only work if supported
+    removeAttRqs: function (internalID, eventType) {
+        //only work if supported        
         if (!this.tocSupported)
             return;
-        //
-        var attRequests = JSON.parse(this.model.get('attentionRequests'));
-        console.log(attRequests, _id, type);
-        //this should always be true, since this is only called by the toc interface
-        //with the right _id parameter
-        if (_id == this.selectedWidget && _id in attRequests) {
-            // if (type in attRequests[_id]) {
-            //     delete attRequests[_id][type]
-            //     if (Object.keys(attRequests[_id]).length == 0)
-            //         delete attRequests[_id];
-            //     this.model.set('attentionRequests', JSON.stringify(attRequests));
-            //     console.log('SETANDO', attRequests);
-            // }
-            console.log('SETTING OPERATION');
-            this.model.set('interfaceOperations', "REMOVER");
+        //              
+        if ((internalID in this._attRqs) &&
+            (eventType in this._attRqs[internalID])) {
+            delete this._attRqs[internalID][eventType]
         }
 
+        if ((internalID in this._attRqs) &&
+            (Object.keys(this._attRqs[internalID]).length == 0)) {
+            delete this._attRqs[internalID];
+        }
+        //
+        this.refreshAttentionVisuals();
     },
-    attentionRequests: function () {
-        //only work if supported
-        if (!this.tocSupported)
-            return;
-        //{'entityType':entityType,'widgetID':internalID,'type':eventType,'description':description}
-        var newAttentionOperation = JSON.parse(this.model.get('attentionRequests'));
-        if (newAttentionOperation['op'] == 'add') {
-            if (!(newAttentionOperation['widgetID'] in this._attRqs)) {
-                this._attRqs[internalID] = {}
-            }
-            this._attRqs[newAttentionOperation['widgetID']][newAttentionOperation['type']] = newAttentionOperation;
-        }
-        else if (newAttentionOperation['op'] == 'remove') {
-            //
-            var internalID = newAttentionOperation['widgetID'];
-            var eventType = newAttentionOperation['type'];
-            if ((internalID in this._attRqs) &&
-                (eventType in self._attRqs[internalID])) {
-                delete this._attRqs[internalID][eventType]
-            }
-
-            if ((internalID in this._attRqs) &&
-                (Object.keys(this._attRqs[internalID]).length == 0)) {
-                delete this._attRqs[internalID];
-            }
-        }
-
-        //
-        var attentionRequests = this._attRqs;
+    refreshAttentionVisuals: function () {
+        //        
         var colorScale =
             d3.scaleOrdinal().domain(["RESCALE_NEEDED", "PROGRESS_NOTIFICATION", "STABILITY_REACHED", "SAFEGUARD_SATISFIED"]).range(['#fbb4ae', '#b3cde3', '#ccebc5', '#decbe4']);
 
-        //console.log("Attention Request", attentionRequests);
+
         var that = this;
         //TODO: CHANGE STROKE FOR SHOWING THAT THERE IS MORE THAN
         //ONE ATTENTION REQUEST
         d3.select('#nodeGroup')
             .selectAll('circle')
             .attr('stroke-dasharray', function () {
+                var attentionRequests = that._attRqs;
+                //
                 var _id = d3.select(this).attr("id").slice(2);
+
                 if (_id in attentionRequests) {
                     var attRequests = attentionRequests[_id];
                     var numRequests = Object.keys(attRequests).length;
@@ -299,6 +270,7 @@ var HelloView = widgets.DOMWidgetView.extend({
                 }
             })
             .attr('fill', function () {
+                var attentionRequests = that._attRqs;
                 var _id = d3.select(this).attr("id").slice(2);
 
                 if (that.selectedWidget == _id) {
@@ -325,6 +297,29 @@ var HelloView = widgets.DOMWidgetView.extend({
                     return 'white';
                 }
             });
+    },
+    attentionRequests: function () {
+        //only work if supported
+        if (!this.tocSupported)
+            return;
+        //{'entityType':entityType,'widgetID':internalID,'type':eventType,'description':description}
+        var newAttentionOperation = JSON.parse(this.model.get('attentionRequests'));
+
+        //
+        var internalID = newAttentionOperation['widgetID'];
+        var eventType = newAttentionOperation['type'];
+
+        if (newAttentionOperation['op'] == 'add') {
+            if (!(internalID in this._attRqs)) {
+                this._attRqs[internalID] = {}
+            }
+            this._attRqs[internalID][eventType] = newAttentionOperation;
+        }
+        else if (newAttentionOperation['op'] == 'remove') {
+            this.removeAttRqs(internalID, eventType);
+        }
+
+        this.refreshAttentionVisuals();
     }
 });
 
