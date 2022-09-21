@@ -43,7 +43,7 @@ var HelloView = widgets.DOMWidgetView.extend({
         // Observe changes in the value traitlet in Python, and define
         // a custom callback.
         this.el.textContent = "ToC Supported: " + this.tocSupported;
-        console.log('WOW 15');
+        console.log('WOW 16');
     },
     initialize: function () {
         console.log("INITIALIZE");
@@ -248,8 +248,31 @@ var HelloView = widgets.DOMWidgetView.extend({
         //only work if supported
         if (!this.tocSupported)
             return;
+        //{'entityType':entityType,'widgetID':internalID,'type':eventType,'description':description}
+        var newAttentionOperation = JSON.parse(this.model.get('attentionRequests'));
+        if (newAttentionOperation['op'] == 'add') {
+            if (!(newAttentionOperation['widgetID'] in this._attRqs)) {
+                this._attRqs[internalID] = {}
+            }
+            this._attRqs[newAttentionOperation['widgetID']][newAttentionOperation['type']] = newAttentionOperation;
+        }
+        else if (newAttentionOperation['op'] == 'remove') {
+            //
+            var internalID = newAttentionOperation['widgetID'];
+            var eventType = newAttentionOperation['type'];
+            if ((internalID in this._attRqs) &&
+                (eventType in self._attRqs[internalID])) {
+                delete this._attRqs[internalID][eventType]
+            }
+
+            if ((internalID in this._attRqs) &&
+                (Object.keys(this._attRqs[internalID]).length == 0)) {
+                delete this._attRqs[internalID];
+            }
+        }
+
         //
-        var attentionRequests = JSON.parse(this.model.get('attentionRequests'));
+        var attentionRequests = this._attRqs;
         var colorScale =
             d3.scaleOrdinal().domain(["RESCALE_NEEDED", "PROGRESS_NOTIFICATION", "STABILITY_REACHED", "SAFEGUARD_SATISFIED"]).range(['#fbb4ae', '#b3cde3', '#ccebc5', '#decbe4']);
 
