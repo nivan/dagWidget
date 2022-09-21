@@ -1,5 +1,5 @@
 import ipywidgets as widgets
-from traitlets import Unicode, Bool
+from traitlets import Unicode, Bool, HasTraits
 from ._version import NPM_PACKAGE_RANGE
 import json
 
@@ -29,8 +29,7 @@ class HelloWorld(widgets.DOMWidget):
     # Widget specific property.
     # Widget properties are defined as traitlets. Any property tagged with `sync=True`
     # is automatically synced to the frontend *any* time it changes in Python.
-    # It is synced back to Python from the frontend *any* time the model is touched.    
-    tocAvailable = Bool(True).tag(sync=True)
+    # It is synced back to Python from the frontend *any* time the model is touched.        
     dag = Unicode('[]').tag(sync=True)
     attentionRequests = Unicode('{}').tag(sync=True)
     summaries = Unicode('{}').tag(sync=True)
@@ -43,8 +42,6 @@ class HelloWorld(widgets.DOMWidget):
         self._attRqs = {}
 
     def registerWidget(self,widget,label,internalID,referenceDivID,parents):
-        if not self.tocAvailable:
-            return
         #
         self._widgets[internalID] = {'widget':widget,'referenceDiv':referenceDivID,'parents':parents,'label':label}
         #add to children list        
@@ -88,13 +85,11 @@ class HelloWorld(widgets.DOMWidget):
         #
         self.updateDag()
 
-    def updateSummary(self, internalID, summaryValues):    
-        if not self.tocAvailable:
-            return        
+    def updateSummary(self, internalID, summaryValues):            
         self._summaries[internalID] = summaryValues  
         self.summaries = json.dumps(self._summaries)          
 
-    def requestAttention(self, internalID, entityType,eventType,description=""):        
+    def requestAttention(self, internalID, entityType,eventType,description=""):                
         if internalID not in self._attRqs:
             self._attRqs[internalID] = {}
         #

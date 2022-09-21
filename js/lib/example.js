@@ -31,7 +31,6 @@ var HelloModel = widgets.DOMWidgetModel.extend({
         _view_module_version: '0.1.0',
         summaries: '{}',
         dag: '[]',
-        tocAvailable: false,
         attentionRequests: '{}'
     })
 });
@@ -43,26 +42,38 @@ var HelloView = widgets.DOMWidgetView.extend({
     render: function () {
         // Observe changes in the value traitlet in Python, and define
         // a custom callback.
+        this.el.textContent = "ToC Supported: " + this.tocSupported;
+        console.log('WOW 15');
+    },
+    initialize: function () {
+        console.log("INITIALIZE");
+        //
+        this.tocSupported = Boolean(d3.select('#toc-wrapper').node());
 
+        //
         if (!d3.dagStratify) {
             importDag();
         }
-        if (!window.dagController)
-            window.dagController = this;
 
         //
         this._attRequests = {};
         this.selectedWidget = undefined;
-        var supported = Boolean(d3.select('#toc-wrapper').node());
-        this.model.set('tocAvailable', supported);
-        this.el.textContent = "ToC Supported: " + supported;
-        console.log('WOW 09');
+
+        //
+        if (!window.dagController)
+            window.dagController = this;
+
+        //
         this.model.on('change:dag', this.dag_changed, this);
         this.model.on('change:attentionRequests', this.attentionRequests, this);
         this.model.on('change:summaries', this.summariesChanged, this);
     },
     fillDetails: function (_id) {
-        //console.log('fill details ', _id);
+        //only work if supported
+        if (!this.tocSupported)
+            return;
+
+        //
         d3.select('#detailsNameLabel').text(_id);
         var summaries = JSON.parse(this.model.get('summaries'));
         if (_id in summaries) {
@@ -105,11 +116,19 @@ var HelloView = widgets.DOMWidgetView.extend({
         }
     },
     summariesChanged: function () {
+        //only work if supported
+        if (!this.tocSupported)
+            return;
+
         if (this.selectedWidget) {
             this.fillDetails(this.selectedWidget);
         }
     },
     dag_changed: function () {
+        //only work if supported
+        if (!this.tocSupported)
+            return;
+        //
         var info = JSON.parse(this.model.get('dag'));
         var _dag = info.dag;
 
@@ -203,7 +222,33 @@ var HelloView = widgets.DOMWidgetView.extend({
             .attr("alignment-baseline", "middle")
             .attr("fill", "black");
     },
+    userRemoveAttRqs: function (_id, type) {
+        //only work if supported
+        if (!this.tocSupported)
+            return;
+        //
+        var attRequests = JSON.parse(this.model.get('attentionRequests'));
+        console.log(attRequests, _id, type);
+        //this should always be true, since this is only called by the toc interface
+        //with the right _id parameter
+        if (_id == this.selectedWidget && _id in attRequests) {
+            // if (type in attRequests[_id]) {
+            //     delete attRequests[_id][type]
+            //     if (Object.keys(attRequests[_id]).length == 0)
+            //         delete attRequests[_id];
+            //     this.model.set('attentionRequests', JSON.stringify(attRequests));
+            //     console.log('SETANDO', attRequests);
+            // }
+            console.log('SETTING OPERATION');
+            this.model.set('interfaceOperations', "REMOVER");
+        }
+
+    },
     attentionRequests: function () {
+        //only work if supported
+        if (!this.tocSupported)
+            return;
+        //
         var attentionRequests = JSON.parse(this.model.get('attentionRequests'));
         var colorScale =
             d3.scaleOrdinal().domain(["RESCALE_NEEDED", "PROGRESS_NOTIFICATION", "STABILITY_REACHED", "SAFEGUARD_SATISFIED"]).range(['#fbb4ae', '#b3cde3', '#ccebc5', '#decbe4']);
