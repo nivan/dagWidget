@@ -41,9 +41,9 @@ class HelloWorld(widgets.DOMWidget):
         self._children = {}
         self._attRqs = {}
 
-    def registerWidget(self,widget,label,internalID,referenceDivID,parents):
+    def registerWidget(self,widget,label,internalID,referenceDivID,parents,summaryVariables=['progress']):        
         #
-        self._widgets[internalID] = {'widget':widget,'referenceDiv':referenceDivID,'parents':parents,'label':label}
+        self._widgets[internalID] = {'widget':widget,'referenceDiv':referenceDivID,'parents':parents,'label':label,'summaryVariables':summaryVariables}
         #add to children list        
         if internalID not in self._children:
             self._children[internalID] = []
@@ -51,9 +51,27 @@ class HelloWorld(widgets.DOMWidget):
         for pr in parents:    
             if pr not in self._children:
                 self._children[pr] = []
-            self._children[pr].append(internalID)
+            self._children[pr].append(internalID)        
         #
         self.updateDag()
+
+    def addParent(self,widgetID,parentID):
+        if (widgetID not in self._widgets) or (parentID not in self._widgets):
+            print('ERROR: node all nodes are registered')
+        else:
+            self._widgets[widgetID]['parents'].append(parentID)
+            self._children[parentID].append(widgetID)
+            self.updateDag()
+
+    def removeParent(self,widgetID,parentID):
+        if (widgetID not in self._widgets) or (parentID not in self._widgets):
+            print('ERROR: node all nodes are registered')
+        else:
+            if parentID in self._widgets[widgetID]['parents']:
+                self._widgets[widgetID]['parents'].remove(parentID)
+            if widgetID in self._children[parentID]:
+                self._children[parentID].remove(widgetID)
+            self.updateDag()
 
     def _removeNode(self,_id):        
         if _id in self._widgets:            
@@ -113,8 +131,10 @@ class HelloWorld(widgets.DOMWidget):
 
     def updateDag(self):
         obj = []        
+        summaryVariables = {}
         for _id in self._widgets:
             obj.append({'id':_id,'divID':self._widgets[_id]['referenceDiv'],'label':self._widgets[_id]['label'],'parentIds':self._widgets[_id]['parents']})
+            summaryVariables[_id] = self._widgets[_id]['summaryVariables']
 
         #
-        self.dag = json.dumps({'dag':obj,'summaries':self._summaries})
+        self.dag = json.dumps({'dag':obj,'summaries':self._summaries,'summaryVariables':summaryVariables})

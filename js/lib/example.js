@@ -3,6 +3,11 @@ var _ = require('lodash');
 var d3 = require('d3');
 const { sum } = require('lodash');
 
+
+
+
+//vermelho,azul,verde,roxo
+
 // See example.py for the kernel counterpart to this file.
 
 
@@ -43,7 +48,74 @@ var HelloView = widgets.DOMWidgetView.extend({
         // Observe changes in the value traitlet in Python, and define
         // a custom callback.
         this.el.textContent = "ToC Supported: " + this.tocSupported;
-        //console.log('WOW 18');
+        //
+        if (this.safeguards == undefined) {
+            this.safeguards = {};
+        }
+        //
+        if (!(d3.select('#site').select('#safeGuardMenu').node())) {
+            var menu = d3.select('#site').append('div')
+                .attr('id', 'safeGuardMenu')
+                .attr('style', 'position: absolute; width: 400px; height: 180px; left: -1000px; top: -1000px; background: white;border: 1px black solid;text-align: center;');
+
+            var field = menu.append('fieldset');
+            field.append('legend').attr('id', 'dialogTitleLabel').text('Add Safeguard to Widget');
+            //                
+            var internalBody = menu.append('div').attr('style', 'display: grid;grid-template-columns: 120px 120px 120px;row-gap: 20px;column-gap:5px;margin-left: 20px;margin-right: 20px;text-align: center;')
+            internalBody.append('label').text('Variable');
+            internalBody.append('label').text('Operation');
+            internalBody.append('label').text('Value');
+            //
+            var variableSelect = internalBody.append('select').attr('id', 'dialogSelectVariable').html(`<option value="">Variable</option>
+            <option value="dog" class="varOption">Dog</option>
+            <option value="cat" class="varOption">Cat</option>
+            <option value="hamster" class="varOption">Hamster</option>
+            <option value="parrot" class="varOption">Parrot</option>
+            <option value="spider" class="varOption">Spider</option>
+            <option value="goldfish" class="varOption">Goldfish</option>`);
+
+            var opSelect = internalBody.append('select').attr('id', 'dialogSelectOperation').html(`<option value="">Operation</option>
+<option value="eq"> == </option>
+<option value="lt"> <  </option>
+<option value="gt"> > </option>`);
+
+            var valueInput = internalBody.append('input').attr('id', 'dialogValueInput').attr('type', 'number').attr('placeholder', 0.0).attr('step', 0.5).attr('value', 0.0);
+
+            internalBody.append('label');//blank
+            //
+            var that = this;
+            internalBody.append('input').attr('type', 'button').attr('value', 'Cancel')
+                .on('click', function () {
+                    d3.select('#safeGuardMenu').style('visibility', 'hidden');
+                    //clear
+                    d3.select('#dialogValueInput').node().value = 0.0;
+                    d3.select('#dialogSelectVariable').node().value = "";
+                    d3.select('#dialogSelectOperation').node().value = "";
+                });
+            internalBody.append('input').attr('type', 'button').attr('value', 'OK')
+                .on('click', function () {
+
+                    //
+                    var selectedVariable = d3.select('#dialogSelectVariable').node().selectedOptions[0].innerText;
+                    var selectedOp = d3.select('#dialogSelectOperation').node().selectedOptions[0].innerText;
+                    var selectedValue = +(d3.select('#dialogValueInput').node().value);
+                    if (selectedVariable != "Variable" && selectedOp != "Operation") {
+                        //
+                        var widgetID = d3.select('#safeGuardMenu').attr('widgetID');
+                        that.safeguards[widgetID] = { 'var': selectedVariable, 'opr': selectedOp, 'thr': selectedValue };
+                        //clear
+                        d3.select('#dialogValueInput').node().value = 0.0;
+                        d3.select('#dialogSelectVariable').node().value = "";
+                        d3.select('#dialogSelectOperation').node().value = "";
+                        d3.select('#safeGuardMenu').style('visibility', 'hidden');
+                        console.log('new safeguard', this);
+                    }
+                    else {
+                        console.log('***', selectedVariable, selectedOp, selectedValue);
+                    }
+                });
+        }
+
     },
     initialize: function () {
         //console.log("INITIALIZE");
@@ -90,7 +162,7 @@ var HelloView = widgets.DOMWidgetView.extend({
         //
         //
         var attentionRequests = this._attRqs;
-        var mapTypeID = { "RESCALE_NEEDED": "attAxesLabel", "PROGRESS_NOTIFICATION": "attProgressLabel", "STABILITY_REACHED": "attStabilityLabel", "SAFEGUARD_SATISFIED": "attSafeguardLabel" };
+        var mapTypeID = window.attentionDetailsMapTypeID;
 
         //if there is at least one attention request for _id
         if (_id in attentionRequests) {
@@ -122,6 +194,36 @@ var HelloView = widgets.DOMWidgetView.extend({
 
         if (this.selectedWidget) {
             this.fillDetails(this.selectedWidget);
+        }
+
+        //show status
+        var summaries = JSON.parse(this.model.get('summaries'));
+        for (var key in summaries) {
+            d3.select('#dagCanvas')
+                .select('#nD' + key)
+                .attr('fill', function () {
+                    if ((summaries[key]['status'] == 'RUNNING')) {
+                        return '#cccccc';
+                    }
+                    else {
+                        return "white";
+                    }
+                });
+        }
+
+        //show safeguard alerts
+        for (var widgetID in this.safeguards) {
+            var safeguard = this.safeguards[widgetID];//{'var':selectedVariable,'opr':selectedOp,'thr':selectedValue};
+            if (widgetID in summaries && safeguard['var'] in summaries[widgetID]) {
+                var currentValue = summaries[widgetID][safeguard['var']];
+                if (eval(`${currentValue} ${safeguard['opr']} ${safeguard['thr']}`)) {
+                    //safeguard satisfied
+                    var circle = d3.select('#nD' + widgetID);
+                    var x = circle.attr('cx');
+                    var y = circle.attr('cy');
+                    var r = circle.attr('r');
+                }
+            }
         }
     },
     clearAttentionRequests: function (_dag) {
@@ -165,11 +267,50 @@ var HelloView = widgets.DOMWidgetView.extend({
         }
         //
         const dag = d3.dagStratify()(_dag);
-        const nodeRadius = 20;
+        const nodeRadius = 15;
+        //
         const layout = d3
             .sugiyama() // base layout
             .decross(d3.decrossOpt()) // minimize number of crossings
-            .nodeSize((node) => [(node ? 3.6 : 0.25) * nodeRadius, 3 * nodeRadius]); // set node size instead of constraining to fit
+            .nodeSize(function (node) {
+                return [(node ? 3.6 : 0.25) * nodeRadius, 3 * nodeRadius];
+                //return [(node ? 3.6 : 0.25) * nodeRadius, 5 * nodeRadius];                
+            });
+
+        //ZherebkoOperator    
+        var edgeRadius = 12;
+        const layout2 = d3.zherebko()
+            .nodeSize([
+                nodeRadius * 2,
+                (nodeRadius + edgeRadius) * 2,
+                edgeRadius * 2
+            ]);
+
+        //Grid
+        var gridCompact = (layout) => (dag) => {
+            // Tweak to render compact grid, first shrink x width by edge radius, then expand the width to account for the loss
+            // This could alos be accomplished by just changing the coordinates of the svg viewbox.
+            const baseLayout = layout.nodeSize([
+                nodeRadius + edgeRadius * 2,
+                (nodeRadius + edgeRadius) * 2
+            ]);
+            const { width, height } = baseLayout(dag);
+            for (const node of dag) {
+                node.x += nodeRadius;
+            }
+            for (const { points } of dag.ilinks()) {
+                for (const point of points) {
+                    point.x += nodeRadius;
+                }
+            }
+            return { width: width + 2 * nodeRadius, height: height };
+        };
+        const layout3 = d3.grid().nodeSize([
+            nodeRadius + edgeRadius * 2,
+            (nodeRadius + edgeRadius) * 2
+        ]);//gridCompact(d3.grid());
+
+        //(node) => [(node ? 3.6 : 0.25) * nodeRadius, 3 * nodeRadius]); // set node size instead of constraining to fit
         const { width, height } = layout(dag);
 
         const line = d3
@@ -186,8 +327,9 @@ var HelloView = widgets.DOMWidgetView.extend({
             .attr("d", ({ points }) => line(points))
             .attr('id', d => 'eS' + d.source.data.id + 'T' + d.target.data.id)
             .attr("fill", "none")
-            .attr("stroke-width", 3)
-            .attr("stroke", 'black');
+            .attr("stroke-width", 1)
+            .attr("stroke", 'gray');
+
         //plot nodes
         nodeGroup.style('cursor', 'pointer');
         var that = this;
@@ -215,15 +357,56 @@ var HelloView = widgets.DOMWidgetView.extend({
                 }
                 //
                 that.fillDetails(label);
+            }).on('contextmenu', function (e) {
+                e.preventDefault();
+                //
+                var myID = this.id.slice(3);
+                d3.select('#safeGuardMenu').attr('widgetID', myID);
+                //                
+                var summaryVariables = JSON.parse(that.model.get('dag'))['summaryVariables'];
+                if (myID in summaryVariables) {
+                    var variables = summaryVariables[myID];
+                    console.log('===>', that, variables);
+                    //set title                 
+                    d3.select('#dialogTitleLabel').text('Add Safeguard to ' + myID);
+                    //set available variables
+                    d3.select('#dialogSelectVariable')
+                        .selectAll('.varOption')
+                        .data(variables)
+                        .join('option')
+                        .attr('value', (d, i) => i + 1)
+                        .attr('class', 'varOption')
+                        .text(d => d);
+
+                    //
+                    var menu = d3.select('#safeGuardMenu')
+                        .style('visibility', 'visible')
+                        .style('left', e.pageX + 'px')
+                        .style('top', e.pageY + 'px')
+                        .style('z-index', '1000');
+                }
+
             });
 
         // Plot node circles
         nodes
-            .append("circle")
+            .append('circle')
             .attr('id', d => 'nD' + d.data.id)
+            .attr('class', 'dagNodes')
             .attr("r", nodeRadius)
             .attr("fill", 'white')
             .attr("stroke", 'black');
+
+        nodes.append('circle')
+            .attr('id', d => 'alertnD' + d.data.id)
+            .attr('class', 'alertCircles')
+            .attr("r", nodeRadius / 3)
+            .attr("cx", nodeRadius * 0.8)
+            .attr("cy", -nodeRadius * 0.8)
+            .attr("fill", 'orange')
+            .attr("stroke", 'black')
+            .attr("stroke-width", 0.5)
+            .style('visibility', 'hidden');
 
         // Add text to nodes
         nodes
@@ -257,61 +440,58 @@ var HelloView = widgets.DOMWidgetView.extend({
     },
     refreshAttentionVisuals: function () {
         //        
-        var colorScale =
-            d3.scaleOrdinal().domain(["RESCALE_NEEDED", "PROGRESS_NOTIFICATION", "STABILITY_REACHED", "SAFEGUARD_SATISFIED"]).range(['#fbb4ae', '#b3cde3', '#ccebc5', '#decbe4']);
-
-
         var that = this;
+        var colorScale = window.attentionColorScale;
         //TODO: CHANGE STROKE FOR SHOWING THAT THERE IS MORE THAN
         //ONE ATTENTION REQUEST
         d3.select('#nodeGroup')
-            .selectAll('circle')
-            .attr('stroke-dasharray', function () {
+            .selectAll('.alertCircles')
+            .attr('fill', function () {
                 var attentionRequests = that._attRqs;
                 //
-                var _id = d3.select(this).attr("id").slice(2);
+                var _id = d3.select(this).attr("id").slice(7);
 
                 if (_id in attentionRequests) {
                     var attRequests = attentionRequests[_id];
                     var numRequests = Object.keys(attRequests).length;
                     if (numRequests > 1) {
-                        return "4";
-                    }
-                    else {
-                        return null;
-                    }
-                }
-                else {
-                    return null;
-                }
-            })
-            .attr('fill', function () {
-                var attentionRequests = that._attRqs;
-                var _id = d3.select(this).attr("id").slice(2);
+                        return colorScale("MULTIPLE");
+                    } else {
+                        var attentionRequests = that._attRqs;
 
-                if (that.selectedWidget == _id) {
-                    that.fillDetails(_id);
-                }
+                        if (that.selectedWidget == _id) {
+                            that.fillDetails(_id);
+                        }
 
-                if (_id in attentionRequests) {
-                    var attRequests = attentionRequests[_id];
-                    //
-                    var attRequest = undefined;
-                    var requestTypes = colorScale.domain();
-                    for (var index in requestTypes) {
-                        var key = requestTypes[index];
-                        if (key in attRequests) {
-                            attRequest = attRequests[key];
-                            break;
+                        if (_id in attentionRequests) {
+                            var attRequests = attentionRequests[_id];
+                            //
+                            var attRequest = undefined;
+                            var requestTypes = colorScale.domain();
+                            for (var index in requestTypes) {
+                                var key = requestTypes[index];
+                                if (key in attRequests) {
+                                    attRequest = attRequests[key];
+                                    break;
+                                }
+                            }
+                            //
+                            var color = colorScale(attRequest.type);
+                            return color;
                         }
                     }
-                    //
-                    var color = colorScale(attRequest.type);
-                    return color;
                 }
                 else {
                     return 'white';
                 }
+            })
+            .style('visibility', function () {
+                var _id = d3.select(this).attr("id").slice(7);
+                var attentionRequests = that._attRqs;
+                if (_id in attentionRequests)
+                    return "visible";
+                else
+                    return "hidden";
             });
     },
     attentionRequests: function () {
