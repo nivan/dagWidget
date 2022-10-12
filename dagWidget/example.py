@@ -6,14 +6,14 @@ import json
 # See js/lib/example.js for the frontend counterpart to this file.
 
 @widgets.register
-class HelloWorld(widgets.DOMWidget):
+class DagWidgetController(widgets.DOMWidget):
     """An example widget."""
 
     # Name of the widget view class in front-end
-    _view_name = Unicode('HelloView').tag(sync=True)
+    _view_name = Unicode('DagWidgetView').tag(sync=True)
 
     # Name of the widget model class in front-end
-    _model_name = Unicode('HelloModel').tag(sync=True)
+    _model_name = Unicode('DagWidgetModel').tag(sync=True)
 
     # Name of the front-end module containing widget view
     _view_module = Unicode('dagWidget').tag(sync=True)
@@ -31,7 +31,7 @@ class HelloWorld(widgets.DOMWidget):
     # is automatically synced to the frontend *any* time it changes in Python.
     # It is synced back to Python from the frontend *any* time the model is touched.        
     dag = Unicode('[]').tag(sync=True)
-    attentionRequests = Unicode('{}').tag(sync=True)
+    attention_requests = Unicode('{}').tag(sync=True)
     summaries = Unicode('{}').tag(sync=True)
 
     def __init__(self):
@@ -41,29 +41,29 @@ class HelloWorld(widgets.DOMWidget):
         self._children = {}
         self._attRqs = {}
 
-    def registerWidget(self,widget,label,internalID,referenceDivID,parents,summaryVariables=['progress']):        
+    def register_widget(self,widget,label,internal_id,reference_div_id,parents,summary_variables=['progress']):        
         #
-        self._widgets[internalID] = {'widget':widget,'referenceDiv':referenceDivID,'parents':parents,'label':label,'summaryVariables':summaryVariables}
+        self._widgets[internal_id] = {'widget':widget,'referenceDiv':reference_div_id,'parents':parents,'label':label,'summaryVariables':summary_variables}
         #add to children list        
-        if internalID not in self._children:
-            self._children[internalID] = []
+        if internal_id not in self._children:
+            self._children[internal_id] = []
         #
         for pr in parents:    
             if pr not in self._children:
                 self._children[pr] = []
-            self._children[pr].append(internalID)        
+            self._children[pr].append(internal_id)        
         #
-        self.updateDag()
+        self.update_dag()
 
-    def addParent(self,widgetID,parentID):
+    def add_parent(self,widgetID,parentID):
         if (widgetID not in self._widgets) or (parentID not in self._widgets):
             print('ERROR: node all nodes are registered')
         else:
             self._widgets[widgetID]['parents'].append(parentID)
             self._children[parentID].append(widgetID)
-            self.updateDag()
+            self.update_dag()
 
-    def removeParent(self,widgetID,parentID):
+    def remove_parent(self,widgetID,parentID):
         if (widgetID not in self._widgets) or (parentID not in self._widgets):
             print('ERROR: node all nodes are registered')
         else:
@@ -71,9 +71,9 @@ class HelloWorld(widgets.DOMWidget):
                 self._widgets[widgetID]['parents'].remove(parentID)
             if widgetID in self._children[parentID]:
                 self._children[parentID].remove(widgetID)
-            self.updateDag()
+            self.update_dag()
 
-    def _removeNode(self,_id):        
+    def _remove_node(self,_id):        
         if _id in self._widgets:            
             #children                    
             for key in self._widgets[_id]['parents']:
@@ -83,7 +83,7 @@ class HelloWorld(widgets.DOMWidget):
             
             #widgets            
             while len(self._children[_id]) > 0:                
-                self.removeNode(self._children[_id][0])
+                self.remove_node(self._children[_id][0])
             #summaries
             if _id in self._summaries:
                 self._summaries.pop(_id)
@@ -91,9 +91,9 @@ class HelloWorld(widgets.DOMWidget):
                 self._children.pop(_id)
             self._widgets.pop(_id)
 
-    def removeNode(self,_id):        
-        self._removeNode(_id)        
-        self.updateDag()
+    def remove_node(self,_id):        
+        self._remove_node(_id)        
+        self.update_dag()
 
     def clear(self):
         self._widgets = {}
@@ -101,35 +101,19 @@ class HelloWorld(widgets.DOMWidget):
         self._children = {}  
         self._attRqs = {}
         #
-        self.updateDag()
+        self.update_dag()
 
-    def updateSummary(self, internalID, summaryValues):            
-        self._summaries[internalID] = summaryValues  
+    def update_summary(self, internal_id, summaryValues):            
+        self._summaries[internal_id] = summaryValues  
         self.summaries = json.dumps(self._summaries)          
 
-    def requestAttention(self, internalID, entityType, eventType, description=""):                
-        # if internalID not in self._attRqs:
-        #     self._attRqs[internalID] = {}
-        # #
-        # self._attRqs[internalID][eventType] = {'entityType':entityType,'widgetID':internalID,'type':eventType,'description':description}        
-        # self.attentionRequests = json.dumps(self._attRqs)
-        #        
-        self.attentionRequests = json.dumps({'op':'add','entityType':entityType,'widgetID':internalID,'type':eventType,'description':description})
+    def request_attention(self, internal_id, entityType, eventType, description=""):                
+        self.attention_requests = json.dumps({'op':'add','entityType':entityType,'widgetID':internal_id,'type':eventType,'description':description})
  
-    def removeRequestAttention(self, internalID, entityType, eventType):
-        # #
-        # if (internalID in self._attRqs) and (eventType in self._attRqs[internalID]):
-        #     self._attRqs[internalID].pop(eventType, None)    
-        # #
-        # if (internalID in self._attRqs) and (len(self._attRqs[internalID]) == 0):
-        #     self._attRqs.pop(internalID, None)
-        # #
-        # self.attentionRequests = json.dumps(self._attRqs)
-        #
-        self.attentionRequests = json.dumps({'op':'remove','entityType':entityType,'widgetID':internalID,'type':eventType})
-        
+    def remove_request_attention(self, internal_id, entityType, eventType):
+        self.attention_requests = json.dumps({'op':'remove','entityType':entityType,'widgetID':internal_id,'type':eventType})        
 
-    def updateDag(self):
+    def update_dag(self):
         obj = []        
         summaryVariables = {}
         for _id in self._widgets:

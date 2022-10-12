@@ -26,23 +26,23 @@ const { sum } = require('lodash');
 
 // When serialiazing the entire widget state for embedding, only values that
 // differ from the defaults will be specified.
-var HelloModel = widgets.DOMWidgetModel.extend({
+var DagWidgetModel = widgets.DOMWidgetModel.extend({
     defaults: _.extend(widgets.DOMWidgetModel.prototype.defaults(), {
-        _model_name: 'HelloModel',
-        _view_name: 'HelloView',
+        _model_name: 'DagWidgetModel',
+        _view_name: 'DagWidgetView',
         _model_module: 'ToCController',
         _view_module: 'ToCController',
         _model_module_version: '0.1.0',
         _view_module_version: '0.1.0',
         summaries: '{}',
         dag: '[]',
-        attentionRequests: '{}'
+        attention_requests: '{}'
     })
 });
 
 
 // Custom View. Renders the widget model.
-var HelloView = widgets.DOMWidgetView.extend({
+var DagWidgetView = widgets.DOMWidgetView.extend({
     // Defines how the widget gets rendered into the DOM
     render: function () {
         // Observe changes in the value traitlet in Python, and define
@@ -137,7 +137,7 @@ var HelloView = widgets.DOMWidgetView.extend({
 
         //
         this.model.on('change:dag', this.dag_changed, this);
-        this.model.on('change:attentionRequests', this.attentionRequests, this);
+        this.model.on('change:attention_requests', this.attentionRequests, this);
         this.model.on('change:summaries', this.summariesChanged, this);
     },
     fillDetails: function (_id) {
@@ -499,7 +499,7 @@ var HelloView = widgets.DOMWidgetView.extend({
         if (!this.tocSupported)
             return;
         //{'entityType':entityType,'widgetID':internalID,'type':eventType,'description':description}
-        var newAttentionOperation = JSON.parse(this.model.get('attentionRequests'));
+        var newAttentionOperation = JSON.parse(this.model.get('attention_requests'));
 
         //
         var internalID = newAttentionOperation['widgetID'];
@@ -520,8 +520,8 @@ var HelloView = widgets.DOMWidgetView.extend({
 });
 
 module.exports = {
-    HelloModel: HelloModel,
-    HelloView: HelloView
+    DagWidgetModel: DagWidgetModel,
+    DagWidgetView: DagWidgetView
 };
 
 function importDag() {
