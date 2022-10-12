@@ -197,19 +197,20 @@ var DagWidgetView = widgets.DOMWidgetView.extend({
         }
 
         //show status
-        var summaries = JSON.parse(this.model.get('summaries'));
-        for (var key in summaries) {
-            d3.select('#dagCanvas')
-                .select('#nD' + key)
-                .attr('fill', function () {
-                    if ((summaries[key]['status'] == 'RUNNING')) {
-                        return '#cccccc';
-                    }
-                    else {
-                        return "white";
-                    }
-                });
-        }
+        // var summaries = JSON.parse(this.model.get('summaries'));
+        // for (var key in summaries) {
+        //     d3.select('#dagCanvas')
+        //         .select('#nD' + key)
+        //         .attr('fill', function () {
+        //             if ((summaries[key]['status'] == 'RUNNING')) {
+        //                 return '#cccccc';
+        //             }
+        //             else {
+        //                 return "white";
+        //             }
+        //         });
+        // }
+        this.colorNodesBasedOnStatus();
 
         //show safeguard alerts
         for (var widgetID in this.safeguards) {
@@ -388,13 +389,12 @@ var DagWidgetView = widgets.DOMWidgetView.extend({
 
             });
 
-        // Plot node circles
+        // Plot node circles        
         nodes
             .append('circle')
             .attr('id', d => 'nD' + d.data.id)
             .attr('class', 'dagNodes')
             .attr("r", nodeRadius)
-            .attr("fill", 'white')
             .attr("stroke", 'black');
 
         nodes.append('circle')
@@ -408,6 +408,8 @@ var DagWidgetView = widgets.DOMWidgetView.extend({
             .attr("stroke-width", 0.5)
             .style('visibility', 'hidden');
 
+        this.colorNodesBasedOnStatus();
+
         // Add text to nodes
         nodes
             .append("text")
@@ -420,6 +422,35 @@ var DagWidgetView = widgets.DOMWidgetView.extend({
 
         //
         this.refreshAttentionVisuals();
+    },
+    colorNodesBasedOnStatus: function () {
+        var summaries = JSON.parse(this.model.get('summaries'));
+        d3.select('#dagCanvas')
+            .selectAll('.dagNodes')
+            .attr('fill', function (d) {
+                console.log('Color Nodes Based ', d.data.id);
+                if (d.data.id in summaries) {
+                    if ((summaries[d.data.id]['status'] == 'RUNNING')) {
+                        return '#a6cee3';
+                    }
+                    else if ((summaries[d.data.id]['status'] == 'PAUSED')) {
+                        return '#cccccc';
+                    }
+                    else if ((summaries[d.data.id]['status'] == 'FINISHED')) {
+                        return '#1f78b4';
+                    }
+                    else if ((summaries[d.data.id]['status'] == 'IDLE')) {
+                        return "white";
+                    }
+                    else {
+                        console.log('ERROR: Invalid Status');
+                        return "black";
+                    }
+                }
+                else {
+                    return "white";
+                }
+            });
     },
     removeAttRqs: function (internalID, eventType) {
         //only work if supported        
