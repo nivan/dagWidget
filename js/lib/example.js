@@ -3,27 +3,6 @@ var _ = require('lodash');
 var d3 = require('d3');
 const { sum } = require('lodash');
 
-
-
-
-//vermelho,azul,verde,roxo
-
-// See example.py for the kernel counterpart to this file.
-
-
-// Custom Model. Custom widgets models must at least provide default values
-// for model attributes, including
-//
-//  - `_view_name`
-//  - `_view_module`
-//  - `_view_module_version`
-//
-//  - `_model_name`
-//  - `_model_module`
-//  - `_model_module_version`
-//
-//  when different from the base class.
-
 // When serialiazing the entire widget state for embedding, only values that
 // differ from the defaults will be specified.
 var DagWidgetModel = widgets.DOMWidgetModel.extend({
@@ -40,18 +19,38 @@ var DagWidgetModel = widgets.DOMWidgetModel.extend({
     })
 });
 
-
 // Custom View. Renders the widget model.
 var DagWidgetView = widgets.DOMWidgetView.extend({
     // Defines how the widget gets rendered into the DOM
     render: function () {
         // Observe changes in the value traitlet in Python, and define
         // a custom callback.
+        console.log("RENDER");
         this.el.textContent = "ToC Supported: " + this.tocSupported;
+    },
+    initialize: function () {
+        console.log("INITIALIZE");
+        //
+        this.tocSupported = Boolean(d3.select('#toc-wrapper').node());
+
+        //
+        if (!d3.dagStratify) {
+            importDag();
+        }
+
+        //
+        this._attRqs = {};
+        this.selectedWidget = undefined;
+
+        //
+        if (!window.dagController)
+            window.dagController = this;
+
         //
         if (this.safeguards == undefined) {
             this.safeguards = {};
         }
+
         //
         if (!(d3.select('#site').select('#safeGuardMenu').node())) {
             var menu = d3.select('#site').append('div')
@@ -116,24 +115,15 @@ var DagWidgetView = widgets.DOMWidgetView.extend({
                 });
         }
 
-    },
-    initialize: function () {
-        //console.log("INITIALIZE");
         //
-        this.tocSupported = Boolean(d3.select('#toc-wrapper').node());
-
-        //
-        if (!d3.dagStratify) {
-            importDag();
-        }
-
-        //
-        this._attRqs = {};
-        this.selectedWidget = undefined;
-
-        //
-        if (!window.dagController)
-            window.dagController = this;
+        // var hoverGroup = d3.select('#dagCanvas')
+        //     .append('g')
+        //     .attr('id', 'dagHoverGroup');
+        // hoverGroup.append('rect')
+        //     .attr('id', 'dagHoverRect')
+        //     .attr('fill', 'white');
+        // hoverGroup.append('text')
+        //     .attr('id', 'dagHoverText');
 
         //
         this.model.on('change:dag', this.dag_changed, this);
@@ -341,23 +331,34 @@ var DagWidgetView = widgets.DOMWidgetView.extend({
             .append("g")
             .attr('id', d => 'gnD' + d.data.id)
             .attr("transform", ({ x, y }) => `translate(${x}, ${y})`)
-            .on('mouseover', function () {
+            .on('mouseover', function (e) {
                 d3.select(this).select('circle').attr('stroke-width', 5);
+                console.log('hover');
+                //
+                // d3.select('#dagHoverText').text('Nivan');
+                // var bbox = d3.select('#dagHoverText').node().getBBox();
+
+                // d3.select('#dagHoverRect')
+                //     .attr('width', Math.ceil(bbox.width))
+                //     .attr('height', Math.ceil(bbox.height));
+                // console.log(e);
+                // d3.select('#dagHoverGroup').attr('transform', `translate(${e.screenX},${e.screenY})`);
             })
             .on('mouseout', function () {
                 d3.select(this).select('circle').attr('stroke-width', 1);
+                //d3.select('#dagCanvas').attr('transform', `translate(-1000,-1000)`);
             })
             .on('click', function () {
-                var label = d3.select(this).select('circle').attr('id').slice(2);
-                that.selectedWidget = label;
-                var elt = info.dag.find(d => d.id == label);
+                var _id = d3.select(this).select('circle').attr('id').slice(2);
+                that.selectedWidget = _id;
+                var elt = info.dag.find(d => d.id == _id);
                 //
-                d3.select('#widgetNameForm').text(label);
+                d3.select('#widgetNameForm').text(_id);
                 if (elt) {
                     document.getElementById(elt.divID).scrollIntoView();
                 }
                 //
-                that.fillDetails(label);
+                that.fillDetails(_id);
             }).on('contextmenu', function (e) {
                 e.preventDefault();
                 //
@@ -413,7 +414,7 @@ var DagWidgetView = widgets.DOMWidgetView.extend({
         // Add text to nodes
         nodes
             .append("text")
-            .text((d) => d.data.id)
+            .text((d) => d.data.label.slice(0, 3)) //shorten label to fit on 
             .attr("font-weight", "bold")
             .attr("font-family", "sans-serif")
             .attr("text-anchor", "middle")
@@ -428,7 +429,6 @@ var DagWidgetView = widgets.DOMWidgetView.extend({
         d3.select('#dagCanvas')
             .selectAll('.dagNodes')
             .attr('fill', function (d) {
-                console.log('Color Nodes Based ', d.data.id);
                 if (d.data.id in summaries) {
                     if ((summaries[d.data.id]['status'] == 'RUNNING')) {
                         return '#a6cee3';

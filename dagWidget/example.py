@@ -57,7 +57,7 @@ class DagWidgetController(widgets.DOMWidget):
 
     def add_parent(self,widgetID,parentID):
         if (widgetID not in self._widgets) or (parentID not in self._widgets):
-            print('ERROR: node all nodes are registered')
+            print(f'ERROR: widget {widgetID} is registered {widgetID in self._widgets} widget {parentID} is registered {parentID in self._widgets}')
         else:
             self._widgets[widgetID]['parents'].append(parentID)
             self._children[parentID].append(widgetID)
